@@ -1,0 +1,84 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "test_user_1",
+      "email": "user1@example.com",
+      "preferences": {
+        "difficulty": "intermediate",
+        "max_content_age_days": 30
+      }
+    },
+    {
+      "id": 2,
+      "username": "test_user_2",
+      "email": "user2@example.com",
+      "preferences": {
+        "difficulty": "beginner",
+        "max_content_age_days": 60
+      }
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "Technology",
+      "slug": "technology",
+      "description": "Tech articles and tutorials",
+      "color": "#007bff"
+    },
+    {
+      "id": 2,
+      "name": "Science",
+      "slug": "science",
+      "description": "Scientific discoveries and research",
+      "color": "#28a745"
+    }
+  ],
+  "content": [
+    {
+      "id": 1,
+      "title": "Introduction to Machine Learning",
+      "content_type": "article",
+      "category_id": 1,
+      "difficulty": "beginner",
+      "tags": ["ml", "ai", "beginner"]
+    },
+    {
+      "id": 2,
+      "title": "Advanced Neural Networks",
+      "content_type": "tutorial",
+      "category_id": 1,
+      "difficulty": "advanced",
+      "tags": ["neural-networks", "deep-learning"]
+    },
+    {
+      "id": 3,
+      "title": "Climate Change Research",
+      "content_type": "article",
+      "category_id": 2,
+      "difficulty": "intermediate",
+      "tags": ["climate", "research", "environment"]
+    }
+  ],
+  "interactions": [
+    {
+      "user_id": 1,
+      "content_id": 1,
+      "interaction_type": "like",
+      "rating": 5
+    },
+    {
+      "user_id": 1,
+      "content_id": 3,
+      "interaction_type": "view",
+      "rating": 4
+    },
+    {
+      "user_id": 2,
+      "content_id": 1,
+      "interaction_type": "save",
+      "rating": 5
+    }
+  ]
+}

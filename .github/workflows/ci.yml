@@ -58,39 +58,29 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y postgresql-client
 
-    - name: Install pipenv
+    - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pipenv
-
-    - name: Cache pipenv dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.local/share/virtualenvs
-        key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pipenv-
-
-    - name: Install Python dependencies
-      run: |
-        pipenv install --dev --deploy
+        pip install -r requirements.txt
 
     - name: Run database migrations
       run: |
-        pipenv run alembic upgrade head
+        alembic upgrade head
 
     - name: Run linting with flake8
       run: |
-        pipenv run flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
-        pipenv run flake8 app tests --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 app tests --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Run tests with pytest
       run: |
-        pipenv run pytest -v --cov=app --cov-report=xml --cov-report=html
+        pytest -v --cov=app --cov-report=xml --cov-report=html
 
     - name: Run type checking with mypy
       run: |
-        pipenv run mypy app --ignore-missing-imports
+        mypy app --ignore-missing-imports
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
@@ -116,49 +106,152 @@ jobs:
         pip install safety
         safety check --json --output safety-report.json || true
 
-  docker:
+  build:
     runs-on: ubuntu-latest
     needs: [test, security]
     if: github.ref == 'refs/heads/main'
+    outputs:
+      image-tag: ${{ steps.image.outputs.tag }}
     
     steps:
     - uses: actions/checkout@v4
     
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+    
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+    
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Build image tag
+      id: image
+      run: |
+        echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+        echo "latest-tag=latest" >> $GITHUB_OUTPUT
     
-    - name: Build and push Docker image
+    - name: Build and push Docker image to ECR
       uses: docker/build-push-action@v5
       with:
         context: .
         target: production
         push: true
         tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/smart-content-recommendations:latest
-          ${{ secrets.DOCKERHUB_USERNAME }}/smart-content-recommendations:${{ github.sha }}
+          ${{ steps.login-ecr.outputs.registry }}/smart-content-recommendations:${{ steps.image.outputs.tag }}
+          ${{ steps.login-ecr.outputs.registry }}/smart-content-recommendations:${{ steps.image.outputs.latest-tag }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [docker]
+    needs: [build]
     if: github.ref == 'refs/heads/main'
     environment: production
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Deploy to production
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+    
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+    
+    - name: Update ECS task definition
+      id: task-def
       run: |
-        echo "Deployment step would go here"
-        echo "This could include:"
-        echo "- Updating Kubernetes deployments"
-        echo "- Running database migrations on production"
-        echo "- Health checks"
-        echo "- Rollback procedures if needed"
+        # Update task definition with new image
+        IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/smart-content-recommendations:${{ needs.build.outputs.image-tag }}"
+        
+        # Download current task definition
+        aws ecs describe-task-definition \
+          --task-definition smart-content-recommendations \
+          --query taskDefinition > task-definition.json
+        
+        # Update image URI in task definition
+        jq --arg IMAGE_URI "$IMAGE_URI" \
+          '.containerDefinitions[0].image = $IMAGE_URI | 
+           .containerDefinitions[1].image = $IMAGE_URI | 
+           .containerDefinitions[2].image = $IMAGE_URI' \
+          task-definition.json > updated-task-definition.json
+        
+        # Remove fields that ECS doesn't accept on registration
+        jq 'del(.taskDefinitionArn) | del(.revision) | del(.status) | del(.requiresAttributes) | del(.placementConstraints) | del(.compatibilities) | del(.registeredAt) | del(.registeredBy)' \
+          updated-task-definition.json > final-task-definition.json
+    
+    - name: Deploy to Amazon ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: final-task-definition.json
+        service: smart-content-recommendations-service
+        cluster: smart-content-recommendations-cluster
+        wait-for-service-stability: true
+        wait-for-minutes: 10
+    
+    - name: Run database migrations
+      run: |
+        # Get the running task ARN
+        TASK_ARN=$(aws ecs list-tasks \
+          --cluster smart-content-recommendations-cluster \
+          --service-name smart-content-recommendations-service \
+          --desired-status RUNNING \
+          --query 'taskArns[0]' \
+          --output text)
+        
+        if [ "$TASK_ARN" != "None" ]; then
+          echo "Running database migrations on task: $TASK_ARN"
+          aws ecs execute-command \
+            --cluster smart-content-recommendations-cluster \
+            --task $TASK_ARN \
+            --container smart-content-api \
+            --interactive \
+            --command "python -m alembic upgrade head"
+        else
+          echo "No running tasks found, skipping migrations"
+        fi
+    
+    - name: Health check
+      run: |
+        echo "Checking application health..."
+        ALB_DNS=$(aws cloudformation describe-stacks \
+          --stack-name smart-content-recommendations-infrastructure \
+          --query 'Stacks[0].Outputs[?OutputKey==`LoadBalancerDNS`].OutputValue' \
+          --output text)
+        
+        if [ -n "$ALB_DNS" ]; then
+          # Wait for deployment to be ready
+          sleep 60
+          
+          # Health check
+          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://$ALB_DNS/health)
+          if [ "$HEALTH_STATUS" = "200" ]; then
+            echo "✅ Application is healthy!"
+          else
+            echo "❌ Health check failed with status: $HEALTH_STATUS"
+            exit 1
+          fi
+        else
+          echo "Could not find load balancer DNS name"
+          exit 1
+        fi
+    
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "🚀 Deployment completed successfully!"
+          echo "Application is running at: http://$ALB_DNS"
+        else
+          echo "❌ Deployment failed!"
+        fi

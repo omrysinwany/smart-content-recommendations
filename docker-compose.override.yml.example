@@ -1,0 +1,49 @@
+# Docker Compose Override Example
+# Copy this file to docker-compose.override.yml for local development
+# This file allows you to override settings in docker-compose.yml
+
+version: '3.8'
+
+services:
+  app:
+    # Development-specific settings
+    volumes:
+      - ./app:/app/app:ro  # Mount source code for hot reload
+      - ./tests:/app/tests:ro
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - RELOAD=true
+    ports:
+      - "8000:8000"  # Expose additional ports if needed
+    # Enable debugger port
+    # - "5678:5678"  # For remote debugging
+
+  postgres:
+    # Development database settings
+    environment:
+      POSTGRES_DB: smart_content_dev
+    ports:
+      - "5432:5432"  # Expose PostgreSQL for external tools
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+
+  redis:
+    # Development Redis settings
+    ports:
+      - "6379:6379"  # Expose Redis for external tools
+    volumes:
+      - redis_dev_data:/data
+
+  # Development-only services
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:

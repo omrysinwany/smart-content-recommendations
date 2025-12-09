@@ -7,8 +7,16 @@ In production, you'd use the Docker setup instead.
 """
 
 import asyncio
+import os
+import sys
+
 import uvicorn
+
+# Add parent directory to path
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
 from app.main import app
+
 
 def main():
     """Run the application locally"""
@@ -17,15 +25,16 @@ def main():
     print("🐳 For full features, use: docker-compose up")
     print("📖 API docs will be available at: http://localhost:8000/docs")
     print("-" * 50)
-    
+
     # Run the server
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
         port=8000,
         reload=True,  # Auto-reload on code changes
-        log_level="info"
+        log_level="info",
     )
+
 
 if __name__ == "__main__":
     main()

@@ -10,8 +10,9 @@ This provides:
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, content, categories
 from app.api.routes import recommendations
+from app.api.v1.endpoints import analytics, auth, categories, content
+
 # Import other endpoint modules as we create them
 # from app.api.v1.endpoints import users
 
@@ -23,6 +24,7 @@ api_router.include_router(auth.router)
 api_router.include_router(content.router)
 api_router.include_router(categories.router)
 api_router.include_router(recommendations.router)
+api_router.include_router(analytics.router)
 
 # We'll add these as we create them:
 # api_router.include_router(users.router)

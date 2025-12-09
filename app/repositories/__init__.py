@@ -8,11 +8,7 @@ This module exports all repositories for easy importing:
 """
 
 from .base import BaseRepository
-from .user_repository import UserRepository
 from .content_repository import ContentRepository
+from .user_repository import UserRepository
 
-__all__ = [
-    "BaseRepository",
-    "UserRepository", 
-    "ContentRepository"
-]
+__all__ = ["BaseRepository", "UserRepository", "ContentRepository"]

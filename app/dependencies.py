@@ -8,18 +8,19 @@ This provides:
 4. Request context dependencies
 """
 
-from typing import Generator, Dict, Any
+from typing import Any, Dict, Generator
+
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.services.auth_service import AuthService
-from app.services.user_service import UserService
-from app.services.content_service import ContentService
-from app.repositories.user_repository import UserRepository
-from app.repositories.content_repository import ContentRepository
 from app.core.security import get_current_active_user
+from app.database import get_db
 from app.models.user import User
+from app.repositories.content_repository import ContentRepository
+from app.repositories.user_repository import UserRepository
+from app.services.auth_service import AuthService
+from app.services.content_service import ContentService
+from app.services.user_service import UserService
 
 
 # Service Dependencies
@@ -53,7 +54,7 @@ def get_content_repository(db: AsyncSession = Depends(get_db)) -> ContentReposit
 def get_request_context(request: Request) -> Dict[str, Any]:
     """
     Extract useful context from the request.
-    
+
     Returns:
         Dictionary with request context information
     """
@@ -63,30 +64,27 @@ def get_request_context(request: Request) -> Dict[str, Any]:
         "client_ip": request.client.host if request.client else None,
         "method": request.method,
         "url": str(request.url),
-        "headers": dict(request.headers)
+        "headers": dict(request.headers),
     }
 
 
 # Common pagination dependency
 class PaginationParams:
     """Pagination parameters for list endpoints."""
-    
+
     def __init__(self, skip: int = 0, limit: int = 20):
         self.skip = max(0, skip)  # Ensure skip is not negative
         self.limit = min(max(1, limit), 100)  # Limit between 1 and 100
 
 
-def get_pagination_params(
-    skip: int = 0,
-    limit: int = 20
-) -> PaginationParams:
+def get_pagination_params(skip: int = 0, limit: int = 20) -> PaginationParams:
     """
     Get pagination parameters with validation.
-    
+
     Args:
         skip: Number of items to skip (default: 0)
         limit: Maximum items to return (default: 20, max: 100)
-        
+
     Returns:
         Validated pagination parameters
     """
@@ -96,14 +94,14 @@ def get_pagination_params(
 # Search parameters dependency
 class SearchParams:
     """Search parameters for search endpoints."""
-    
+
     def __init__(
         self,
         q: str = "",
         category: str = None,
         content_type: str = None,
         sort_by: str = "created_at",
-        order: str = "desc"
+        order: str = "desc",
     ):
         self.query = q.strip()
         self.category = category
@@ -117,18 +115,18 @@ def get_search_params(
     category: str = None,
     content_type: str = None,
     sort_by: str = "created_at",
-    order: str = "desc"
+    order: str = "desc",
 ) -> SearchParams:
     """
     Get search parameters with validation.
-    
+
     Args:
         q: Search query string
         category: Content category filter
         content_type: Content type filter
         sort_by: Sort field (default: created_at)
         order: Sort order (asc/desc, default: desc)
-        
+
     Returns:
         Validated search parameters
     """
@@ -138,21 +136,23 @@ def get_search_params(
 # Current user dependencies
 async def get_current_user(
     token_data: Dict[str, Any] = Depends(get_current_active_user),
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
 ) -> User:
     """
     Get current user from JWT token.
-    
+
     Args:
         token_data: Token data from JWT validation
         user_service: User service for database operations
-        
+
     Returns:
         Current user object
     """
-    user = await user_service.get_user_by_id(token_data["user_id"])
+    user_profile = await user_service.get_user_profile(token_data["user_id"])
+    user = user_profile if user_profile else None
     if not user:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=401, detail="User not found")
     return user
 
@@ -160,21 +160,18 @@ async def get_current_user(
 # Current user with extended info
 async def get_current_user_extended(
     current_user: User = Depends(get_current_user),
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
 ) -> Dict[str, Any]:
     """
     Get current user with extended profile information.
-    
+
     Args:
         current_user: Current user object
         user_service: User service for database operations
-        
+
     Returns:
         Extended user information
     """
     user_profile = await user_service.get_user_profile(current_user.id)
-    
-    return {
-        "user": current_user,
-        "profile": user_profile
-    }
+
+    return {"user": current_user, "profile": user_profile}
