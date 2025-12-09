@@ -97,6 +97,23 @@ smart-content-recommendations/
 └── docs/             # Documentation
 ```
 
+## ☁️ Deployment & Cloud
+
+This project is designed with production deployment in mind.
+
+*   **Docker**: Fully containerized application with `Dockerfile` and `docker-compose`.
+*   **AWS Infrastructure**: Includes CloudFormation templates for deploying to AWS ECS (Elastic Container Service).
+*   **Infrastructure as Code**: See `aws/` directory for infrastructure definitions.
+
+### Documentation
+
+Detailed guides are available in the `docs/` directory:
+
+*   [📖 API Usage Guide](docs/USAGE_GUIDE.md) - How to use the endpoints.
+*   [🐳 Docker Setup](docs/DOCKER_SETUP.md) - Running with containers.
+*   [☁️ AWS Deployment](docs/AWS_DEPLOYMENT_GUIDE.md) - Deploying to the cloud.
+*   [📈 Tracking Guide](docs/RECOMMENDATION_TRACKING_GUIDE.md) - Monitoring performance.
+
 ## 📄 License
 
 This project is open source and available under the MIT License.
