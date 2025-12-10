@@ -47,7 +47,7 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(
             ["content_id"],
-            ["contents.id"],
+            ["content.id"],
         ),
         sa.ForeignKeyConstraint(
             ["user_id"],
