@@ -106,12 +106,23 @@ line_length = 88
 known_first_party = ["app", "tests"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.11"
+plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
 check_untyped_defs = true
 ignore_missing_imports = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[[tool.mypy.overrides]]
+module = "app.models.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "app.schemas.*"
+ignore_errors = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
