@@ -9,7 +9,11 @@ This handles:
 """
 
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.content import Content
 
 from sqlalchemy import (
     JSON,

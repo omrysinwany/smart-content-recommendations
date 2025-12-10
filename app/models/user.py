@@ -9,7 +9,12 @@ This model handles:
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.content import Content
+    from app.models.interaction import Interaction, Follow
+    from app.models.recommendation_log import RecommendationLog
 
 from sqlalchemy import JSON, Boolean, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
