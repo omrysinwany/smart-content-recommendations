@@ -116,4 +116,12 @@ smart-content-recommendations/
 
 ## 📄 License
 
-This project is open source and available under the MIT License.
+This project is [MIT](LICENSE) licensed.
+
+## 👤 Author
+
+**Omry** - Full-Stack Developer
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=flat&logo=linkedin)](https://www.linkedin.com/in/omry-sinwany)
+
+Feel free to reach out for collaboration or opportunities!
