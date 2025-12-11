@@ -120,7 +120,7 @@ This project is [MIT](LICENSE) licensed.
 
 ## 👤 Author
 
-**Omry** - Full-Stack Developer
+**Omry** - Python Developer
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=flat&logo=linkedin)](https://www.linkedin.com/in/omry-sinwany)
 
